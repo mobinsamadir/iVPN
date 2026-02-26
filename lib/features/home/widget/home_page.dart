@@ -184,7 +184,8 @@ class HomePage extends HookConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    if (topBanner != null && topBanner.isEnabled) BannerAdWidget(adItem: topBanner),
+                    if (topBanner != null && topBanner.isEnabled)
+                      SizedBox(height: 90, child: BannerAdWidget(adItem: topBanner)),
                     Expanded(
                       child: CustomScrollView(
                         slivers: [
@@ -230,7 +231,8 @@ class HomePage extends HookConsumerWidget {
                         ],
                       ),
                     ),
-                    if (bottomBanner != null && bottomBanner.isEnabled) BannerAdWidget(adItem: bottomBanner),
+                    if (bottomBanner != null && bottomBanner.isEnabled)
+                      SizedBox(height: 90, child: BannerAdWidget(adItem: bottomBanner)),
                   ],
                 ),
               ),

@@ -88,7 +88,11 @@ Future<void> lazyBootstrap(WidgetsBinding widgetsBinding, Environment env) async
 
   await _init("translations", () => container.read(translationsProvider.future));
 
-  await _init("initial config", () => container.read(initialConfigServiceProvider).injectInitialConfig());
+  await _safeInit(
+    "initial config",
+    () => container.read(initialConfigServiceProvider).injectInitialConfig(),
+    timeout: 2000,
+  );
 
   await _safeInit("remote ad config", () => container.read(adManagerProvider.future));
 
