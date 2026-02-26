@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
+import 'package:hiddify/features/ads/widget/ads_reward_page.dart';
 import 'package:hiddify/features/home/widget/connection_button.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/profile/widget/profile_tile.dart';
@@ -66,6 +67,15 @@ class HomePage extends HookConsumerWidget {
             child: IconButton(
               icon: Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
               onPressed: () => ref.read(bottomSheetsNotifierProvider.notifier).showQuickSettings(),
+            ),
+          ),
+          const Gap(8),
+          Semantics(
+            key: const ValueKey("ads_reward_button"),
+            label: "Rewards",
+            child: IconButton(
+              icon: Icon(Icons.card_giftcard_rounded, color: theme.colorScheme.primary),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdsRewardPage())),
             ),
           ),
           const Gap(8),
