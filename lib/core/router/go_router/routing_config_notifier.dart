@@ -63,40 +63,11 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
     if (isMobileBreakpoint == null) return loadingConfig;
     return RoutingConfig(
       redirect: (context, state) {
-        final introCompleted = ref.read(Preferences.introCompleted);
-        // We read isFirstLaunch for debugging/logging, but the logic depends on introCompleted
-        // ignore: unused_local_variable
-        final isFirstLaunch = ref.read(Preferences.isFirstLaunch);
-
-        final isIntro = state.matchedLocation == '/intro';
-        // fix path-parameters for deep link
-        String? url;
-        if (LinkParser.protocols.contains(state.uri.scheme)) {
-          url = state.uri.toString();
-        } else if (PlatformUtils.isDesktop && newUrlFromAppLink.isNotEmpty) {
-          url = newUrlFromAppLink;
-          newUrlFromAppLink = '';
-        } else if (state.uri.queryParameters['url'] != null) {
-          url = state.uri.queryParameters['url'];
+        // HARDCODE: Force Intro Screen
+        if (state.matchedLocation != '/intro') {
+          return '/intro';
         }
-
-        // Logic restored: if intro not completed, go to intro.
-        if (!introCompleted) {
-          return url != null ? '/intro?url=$url' : '/intro';
-        } else if (isIntro) {
-          if (url != null) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile(url: url),
-            );
-          }
-          return '/home';
-        } else if (url != null) {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile(url: url),
-          );
-          return '/home';
-        }
-        return null;
+        return null; // Stay on /intro if already there
       },
       routes: <RouteBase>[
         StatefulShellRoute.indexedStack(
