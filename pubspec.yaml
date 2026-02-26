@@ -135,6 +135,7 @@ dependencies:
   humanizer: ^3.0.1
   dependency_validator: ^5.0.2
   webview_flutter: ^4.13.1
+  webview_windows: ^0.4.0
 
 dev_dependencies:
   # flutter_test:
