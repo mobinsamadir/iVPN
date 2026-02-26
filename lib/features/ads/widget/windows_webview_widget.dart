@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,17 +24,32 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
     _initWebview();
   }
 
+  void _log(String message) {
+    debugPrint(message);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[WindowsWebViewWidget] $message');
+    }
+  }
+
   Future<void> _initWebview() async {
-    debugPrint('[AdWidget] Initializing Windows WebView...');
+    _log('Initializing Windows WebView...');
     try {
+      // Check for WebView2 Runtime
+      // Note: WebviewController doesn't have a static check method readily available in all versions,
+      // but initialization throws if runtime is missing.
+      // However, we will try to use initialize() safely.
+
       await _controller.initialize();
+      _log('WebView controller initialized.');
+
       await _controller.setBackgroundColor(Colors.transparent);
       await _controller.clearCache();
       await _controller.clearCookies();
 
-      debugPrint('[AdWidget] Loading Windows HTML...');
+      _log('Loading HTML content...');
       if (!mounted) return;
       await _controller.loadStringContent(widget.htmlContent);
+      _log('HTML content loaded.');
 
       _controller.url.listen((url) {
         if (url != 'about:blank' && !url.contains('data:text/html') && !url.contains('acceptable.a-ads.com')) {
@@ -43,10 +60,16 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
       });
 
       if (mounted) setState(() => _isInitialized = true);
-    } catch (e) {
+    } catch (e, stackTrace) {
       final msg = 'WebView Initialization Failed: $e';
-      debugPrint('[AdWidget] $msg');
-      if (mounted) setState(() => _errorMessage = msg);
+      _log('ERROR: $msg\n$stackTrace');
+
+      String userFriendlyMsg = msg;
+      if (e.toString().contains('WebView2 Runtime not installed') || e.toString().contains('0x80070002')) {
+         userFriendlyMsg = 'WebView2 Runtime not found. Please install Microsoft Edge WebView2 Runtime.';
+      }
+
+      if (mounted) setState(() => _errorMessage = userFriendlyMsg);
     }
   }
 
@@ -73,7 +96,16 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
   @override
   Widget build(BuildContext context) {
     if (_errorMessage != null) {
-      return Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
+        )
+      );
     }
     if (!_isInitialized) {
       return const Center(child: Column(

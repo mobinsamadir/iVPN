@@ -88,11 +88,34 @@ Future<void> lazyBootstrap(WidgetsBinding widgetsBinding, Environment env) async
 
   await _init("translations", () => container.read(translationsProvider.future));
 
-  await _safeInit(
-    "initial config",
-    () => container.read(initialConfigServiceProvider).injectInitialConfig(),
-    timeout: 2000,
-  );
+  // STARTUP FLOW FIX: Check first launch status
+  final isFirstLaunch = container.read(Preferences.isFirstLaunch);
+
+  void log(String message) {
+    Logger.bootstrap.info(message);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[Bootstrap] $message');
+    }
+  }
+
+  log('First launch detected: $isFirstLaunch');
+
+  if (isFirstLaunch) {
+    log('First launch: forcing wait for initial config injection...');
+    // Force wait, no timeout, let it fail or succeed but report explicitly.
+    try {
+      await container.read(initialConfigServiceProvider).injectInitialConfig();
+      log('Initial config injection completed (success or handled failure).');
+    } catch (e) {
+      log('CRITICAL: Initial config injection crashed: $e');
+    }
+  } else {
+     await _safeInit(
+      "initial config",
+      () => container.read(initialConfigServiceProvider).injectInitialConfig(),
+      timeout: 2000,
+    );
+  }
 
   await _safeInit("remote ad config", () => container.read(adManagerProvider.future));
 
