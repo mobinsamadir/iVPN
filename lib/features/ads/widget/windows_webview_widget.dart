@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_windows/webview_windows.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_windows/webview_windows.dart';
 
 class WindowsWebViewWidget extends StatefulWidget {
   final String htmlContent;
@@ -64,16 +65,11 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
       final msg = 'WebView Initialization Failed: $e';
       _log('ERROR: $msg\n$stackTrace');
 
-      String userFriendlyMsg = msg;
-      if (e.toString().contains('WebView2 Runtime not installed') || e.toString().contains('0x80070002')) {
-         userFriendlyMsg = 'WebView2 Runtime not found. Please install Microsoft Edge WebView2 Runtime.';
-      }
-
-      if (mounted) setState(() => _errorMessage = userFriendlyMsg);
+      if (mounted) setState(() => _errorMessage = "Ad View Error");
     }
   }
 
-  void _launchUrl(String urlString) async {
+  Future<void> _launchUrl(String urlString) async {
     final uri = Uri.parse(urlString);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -96,12 +92,12 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
   @override
   Widget build(BuildContext context) {
     if (_errorMessage != null) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: EdgeInsets.all(8.0),
           child: Text(
-            _errorMessage!,
-            style: const TextStyle(color: Colors.red),
+            "Ad View Error",
+            style: TextStyle(color: Colors.red),
             textAlign: TextAlign.center,
           ),
         )
@@ -117,7 +113,7 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
         ],
       ));
     }
-    return Container(
+    return ColoredBox(
       color: Colors.transparent,
       child: Webview(_controller),
     );

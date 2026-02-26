@@ -50,6 +50,11 @@ class InitialConfigService {
       final configContent = await _ref.read(vpnConfigServiceProvider).fetchConfig();
 
       if (configContent != null && configContent.isNotEmpty) {
+        // Log the ENTIRE raw string response to stdout as requested
+        if (!kIsWeb && Platform.isWindows) {
+          stdout.writeln('[InitialConfigService] Full Raw Response:\n$configContent');
+        }
+
         _log('Config content fetched (length: ${configContent.length}). Injecting...');
 
         final profileRepo = _ref.read(profileRepositoryProvider).requireValue;
