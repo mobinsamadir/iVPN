@@ -40,6 +40,7 @@ class HomePage extends HookConsumerWidget {
         final update = await updateService.checkUpdate();
         if (update != null && context.mounted) {
           final packageInfo = await PackageInfo.fromPlatform();
+          if (!context.mounted) return;
           // Remove + part if exists to parse integer or just use buildNumber
           final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
 

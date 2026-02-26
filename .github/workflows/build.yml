@@ -144,14 +144,27 @@ jobs:
           $targets = "${{ matrix.targets }}".Split(',')
           foreach ($ext in $targets) {
             $ext = $ext.Trim()
-            $key = "TARGET_NAME_$ext"
-            $targetName = (Get-Item "env:$key").Value
-            
-            $files = Get-ChildItem -Path dist -Recurse -Filter "*.$ext"
-            
-            foreach ($file in $files) {
-                $destination = Join-Path -Path "out" -ChildPath "$targetName.$ext"
-                Move-Item -Path $file.FullName -Destination $destination -Force
+            if ($ext -eq "zip") {
+                $files = Get-ChildItem -Path dist -Recurse -Filter "*.zip"
+                foreach ($file in $files) {
+                    Write-Host "Extracting $($file.Name) to avoid double-zipping..."
+                    Expand-Archive -LiteralPath $file.FullName -DestinationPath "out" -Force
+
+                    if (Test-Path "out/iVPN") {
+                        $targetName = $env:TARGET_NAME_zip
+                        $destPath = Join-Path "out" $targetName
+                        if (Test-Path $destPath) { Remove-Item $destPath -Recurse -Force }
+                        Rename-Item -Path "out/iVPN" -NewName $targetName
+                    }
+                }
+            } else {
+                $key = "TARGET_NAME_$ext"
+                $targetName = (Get-Item "env:$key").Value
+                $files = Get-ChildItem -Path dist -Recurse -Filter "*.$ext"
+                foreach ($file in $files) {
+                    $destination = Join-Path -Path "out" -ChildPath "$targetName.$ext"
+                    Move-Item -Path $file.FullName -Destination $destination -Force
+                }
             }
           }
           Get-ChildItem -Path out
