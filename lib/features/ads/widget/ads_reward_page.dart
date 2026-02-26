@@ -85,56 +85,45 @@ $content
       return t.cancel;
     }, []);
 
-    // Prevent back navigation without result (treat as cancel)
-    // Actually, PopScope with canPop: false allows intercepting.
-    // But we want to allow pop, just ensure it returns false if not claimed.
-    // However, Navigator.pop(result) returns result. Back button returns null.
-    // So we can wrap in PopScope, intercept back, and pop(false).
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        // If user presses back, we treat it as cancel (false)
-        Navigator.of(context).pop(false);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("iVPN Rewards"),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
+    // Removed PopScope(canPop: false) to prevent navigation lock.
+    // Default back button returns null, which ConnectionButton treats as cancel (not true).
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("iVPN Rewards"),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(false),
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: WebViewWidget(controller: controller),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: WebViewWidget(controller: controller),
+            ),
+            const Gap(16),
+            const Text(
+              "Please wait to connect...",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const Gap(8),
+            if (!canClaim.value)
+              Text(
+                "${countdownTimer.value} seconds",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              const Gap(16),
-              const Text(
-                "Please wait to connect...",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            const Gap(16),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text("Cancel"),
               ),
-              const Gap(8),
-              if (!canClaim.value)
-                Text(
-                  "${countdownTimer.value} seconds",
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              const Gap(16),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text("Cancel"),
-                ),
-              ),
-              const Gap(32),
-            ],
-          ),
+            ),
+            const Gap(32),
+          ],
         ),
       ),
     );
