@@ -21,26 +21,26 @@ class VpnConfigService {
   VpnConfigService(this._ref);
 
   Future<String?> fetchConfig() async {
-    Logger.bootstrap.debug('Fetching remote VPN config...');
+    Logger.bootstrap.info('Fetching initial config from remote source...');
     try {
       final response = await _dio.get<String>(
         _url,
         options: Options(
           responseType: ResponseType.plain,
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
         ),
       );
 
       if (response.statusCode == 200 && response.data != null) {
         _ref.read(vpnConfigProvider.notifier).state = response.data;
-        Logger.bootstrap.debug('Remote VPN config fetched successfully.');
+        Logger.bootstrap.info('Initial config fetched successfully.');
         return response.data;
       } else {
-        Logger.bootstrap.warning('Failed to fetch remote VPN config. Status code: ${response.statusCode}');
+        Logger.bootstrap.warning('Failed to fetch initial config. Status code: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      Logger.bootstrap.error('Error fetching remote VPN config', e, stackTrace);
+      Logger.bootstrap.error('Error fetching initial config', e, stackTrace);
     }
     return null;
   }

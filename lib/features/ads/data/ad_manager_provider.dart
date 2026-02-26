@@ -17,6 +17,7 @@ class AdManager extends _$AdManager {
   static const _url =
       'https://gist.githubusercontent.com/mobinsamadir/037cdab8b8713e1c5a52d815539f5638/raw/086833a97d236d9cf57d427c46c2268904244a7e/ad_config.json';
   static const _cacheKey = 'ad_config_cache';
+  static const _timestampKey = 'ad_config_last_fetch_timestamp';
 
   @override
   FutureOr<AdConfig?> build() async {
@@ -31,27 +32,43 @@ class AdManager extends _$AdManager {
         final fixedCached = _fixUrls(cached);
         final json = jsonDecode(fixedCached) as Map<String, dynamic>;
         cachedConfig = AdConfig.fromJson(json);
-        Logger.bootstrap.debug('Loaded ad config from cache.');
+        Logger.app.info('Loaded ad config from cache.');
       } catch (e) {
-        Logger.bootstrap.warning('Failed to parse cached ad config: $e');
+        Logger.app.warning('Failed to parse cached ad config: $e');
       }
     }
 
-    // Trigger fetch in background to update cache
-    _fetchAndCache(prefs);
+    // Determine if we need to fetch remote config
+    final lastFetch = prefs.getInt(_timestampKey) ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final diff = now - lastFetch;
+    final shouldFetch = diff > const Duration(hours: 6).inMilliseconds;
+
+    if (shouldFetch) {
+        Logger.app.info('Ad config cache expired (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}), fetching remote...');
+       _fetchAndCache(prefs);
+    } else {
+        Logger.app.debug('Ad config cache valid (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}). Skipping remote fetch.');
+    }
+
+    // If no cache exists, force fetch even if timestamp says otherwise (edge case)
+    if (cachedConfig == null && !shouldFetch) {
+        Logger.app.info('No cached ad config found, fetching remote...');
+        _fetchAndCache(prefs);
+    }
 
     return cachedConfig;
   }
 
   Future<void> _fetchAndCache(SharedPreferences prefs) async {
-    Logger.bootstrap.debug('Fetching remote ad config...');
+    Logger.app.info('Attempting to fetch Ad JSON...');
     try {
       final response = await _dio.get<String>(
         _url,
         options: Options(
           responseType: ResponseType.plain,
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
         ),
       );
 
@@ -59,20 +76,22 @@ class AdManager extends _$AdManager {
         final rawData = response.data!;
         final fixedData = _fixUrls(rawData);
 
+        Logger.app.info('Ad JSON fetched successfully.');
+
         // Update cache
         await prefs.setString(_cacheKey, fixedData);
+        await prefs.setInt(_timestampKey, DateTime.now().millisecondsSinceEpoch);
 
         // Parse and update state
         final json = jsonDecode(fixedData) as Map<String, dynamic>;
         final newConfig = AdConfig.fromJson(json);
 
-        Logger.bootstrap.debug('Remote ad config fetched and cached successfully.');
         state = AsyncData(newConfig);
       } else {
-        Logger.bootstrap.warning('Failed to fetch remote ad config. Status code: ${response.statusCode}');
+        Logger.app.warning('Failed to fetch remote ad config. Status code: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      Logger.bootstrap.error('Error fetching remote ad config', e, stackTrace);
+      Logger.app.error('Error fetching remote ad config', e, stackTrace);
     }
   }
 

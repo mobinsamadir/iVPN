@@ -14,6 +14,7 @@ class WindowsWebViewWidget extends StatefulWidget {
 class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
   final _controller = WebviewController();
   bool _isInitialized = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -22,6 +23,7 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
   }
 
   Future<void> _initWebview() async {
+    debugPrint('[AdWidget] Initializing Windows WebView...');
     try {
       await _controller.initialize();
       await _controller.setBackgroundColor(Colors.transparent);
@@ -29,6 +31,7 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
       await _controller.clearCookies();
 
       debugPrint('[AdWidget] Loading Windows HTML...');
+      if (!mounted) return;
       await _controller.loadStringContent(widget.htmlContent);
 
       _controller.url.listen((url) {
@@ -41,7 +44,9 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
 
       if (mounted) setState(() => _isInitialized = true);
     } catch (e) {
-      debugPrint('Windows WebView Error: $e');
+      final msg = 'WebView Initialization Failed: $e';
+      debugPrint('[AdWidget] $msg');
+      if (mounted) setState(() => _errorMessage = msg);
     }
   }
 
@@ -67,8 +72,18 @@ class _WindowsWebViewWidgetState extends State<WindowsWebViewWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)));
+    }
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 8),
+          Text("Loading Ad..."),
+        ],
+      ));
     }
     return Container(
       color: Colors.transparent,
