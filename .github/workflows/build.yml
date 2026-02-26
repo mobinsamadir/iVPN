@@ -58,7 +58,6 @@ jobs:
   build:
 #    needs: test
     permissions: write-all
-    continue-on-error: true
 
     strategy:
       fail-fast: false
@@ -110,7 +109,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Import Apple Codesign Certificates
         if: ${{ inputs.upload-artifact && startsWith(matrix.os,'macos') }}
@@ -185,7 +184,7 @@ jobs:
         uses: android-actions/setup-android@v3
         if: startsWith(matrix.platform,'android')
       # - name: Cache Android SDK
-      #   uses: actions/cache@v5
+      #   uses: actions/cache@v4
       #   if: startsWith(matrix.platform,'android')
       #   with:
       #     path: |
@@ -260,17 +259,17 @@ jobs:
         run: |
           make ${{ matrix.platform }}-release
 
-      - name: Code Sign
-        if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') && secrets.WINDOWS_SIGNING_KEY != '' }}
-        uses: hiddify/signtool-code-sign-sha256@main
-        with:
-          certificate: '${{ secrets.WINDOWS_SIGNING_KEY }}'
-          cert-password: '${{ secrets.WINDOWS_SIGNING_PASSWORD }}'
-          cert-sha1: '${{ secrets.WINDOWS_SIGNING_SHA1 }}'
-          folder: 'dist'
-          timestamp-server: 'http://timestamp.digicert.com'
-          recursive: true
-          description: 'Hiddify'
+      # - name: Code Sign
+      #   if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') && secrets.WINDOWS_SIGNING_KEY != '' }}
+      #   uses: hiddify/signtool-code-sign-sha256@main
+      #   with:
+      #     certificate: '${{ secrets.WINDOWS_SIGNING_KEY }}'
+      #     cert-password: '${{ secrets.WINDOWS_SIGNING_PASSWORD }}'
+      #     cert-sha1: '${{ secrets.WINDOWS_SIGNING_SHA1 }}'
+      #     folder: 'dist'
+      #     timestamp-server: 'http://timestamp.digicert.com'
+      #     recursive: true
+      #     description: 'Hiddify'
 
       - name: Copy to out Windows
         if: matrix.platform == 'windows'
@@ -359,7 +358,7 @@ jobs:
 
       - name: Upload Artifact
         if: env.UPLOAD_ARTIFACT == 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.platform}}
           path: ./out
@@ -377,13 +376,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           # by default, it uses a depth of 1
           # this fetches all history so that we can read each commit
           fetch-depth: 0
       - name: Download Artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           pattern: "*"
@@ -391,8 +390,9 @@ jobs:
           
 
       - name: Display Files Structure
-        run: ls -R
-        working-directory: ./out
+        run: |
+          mkdir -p ./out
+          ls -R ./out
 
       - name: Delete Current Release Assets
         uses: 8Mi-Tech/delete-release-assets-action@main
@@ -443,10 +443,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Download Artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           pattern: "*"
@@ -454,6 +454,7 @@ jobs:
 
       - name: Display Files Structure
         run: |
+          mkdir -p ./out
           ls -R ./out
           ls -R ./.github/
           ls -R ./.git/
@@ -496,7 +497,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           pattern: "*ios*"
