@@ -15,9 +15,10 @@ import 'package:hiddify/core/model/environment.dart';
 import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/core/preferences/preferences_migration.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
-import 'package:hiddify/features/ads/data/ad_config_provider.dart';
+import 'package:hiddify/features/ads/data/ad_manager_provider.dart';
 import 'package:hiddify/features/app/widget/app.dart';
 import 'package:hiddify/features/auto_start/notifier/auto_start_notifier.dart';
+import 'package:hiddify/features/config_injection/data/initial_config_service.dart';
 
 import 'package:hiddify/features/log/data/log_data_providers.dart';
 import 'package:hiddify/features/profile/data/profile_data_providers.dart';
@@ -87,7 +88,9 @@ Future<void> lazyBootstrap(WidgetsBinding widgetsBinding, Environment env) async
 
   await _init("translations", () => container.read(translationsProvider.future));
 
-  await _safeInit("remote ad config", () => container.read(adConfigServiceProvider).fetchRemoteConfig());
+  await _init("initial config", () => container.read(initialConfigServiceProvider).injectInitialConfig());
+
+  await _safeInit("remote ad config", () => container.read(adManagerProvider.future));
 
   await _safeInit("active profile", () => container.read(activeProfileProvider.future), timeout: 1000);
   await _init("hiddify-core", () => container.read(hiddifyCoreServiceProvider).init());

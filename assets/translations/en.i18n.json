@@ -523,7 +523,8 @@
       "msg": "A new version of @:common.appTitle is available. Would you like to update now?",
       "currentVersion": "Current version: ",
       "newVersion": "New version: ",
-      "updateNow": "Update now"
+      "updateNow": "Update now",
+      "releaseNotes": "Release Notes"
     },
     "confirmation": {
       "settings": {

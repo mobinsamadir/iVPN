@@ -522,7 +522,8 @@
       "msg": "نسخه جدیدی از @:common.appTitle در دسترس است. آیا مایل به به‌روزرسانی هستید؟",
       "currentVersion": "نسخه فعلی: ",
       "newVersion": "نسخه جدید: ",
-      "updateNow": "اکنون به‌روزرسانی کن"
+      "updateNow": "اکنون به‌روزرسانی کن",
+      "releaseNotes": "توضیحات انتشار"
     },
     "confirmation": {
       "settings": {

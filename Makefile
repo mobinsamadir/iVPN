@@ -301,11 +301,11 @@ windows-zip-release:
 	$(YELLOW)Post-processing Windows portable$(DONE); \
 	cd "$$ZIP_DIR"; \
 	$(BLUE)Extracting and Repacking...$(DONE); \
-	mkdir -p Hiddify; \
-	unzip -q "$$ZIP_FILE" -d Hiddify/; \
+	mkdir -p iVPN; \
+	unzip -q "$$ZIP_FILE" -d iVPN/; \
 	rm "$$ZIP_FILE"; \
-	tar -a -cf "$$FILE_NAME.zip" Hiddify; \
-	rm -rf Hiddify; \
+	tar -a -cf "iVPN-Windows-Portable-x64.zip" iVPN; \
+	rm -rf iVPN; \
 	$(GREEN)Successful$(DONE)
 
 windows-exe-release:

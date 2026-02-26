@@ -23,6 +23,8 @@ abstract class Preferences {
     overrideValue: _debugIntroPage && kDebugMode ? false : null,
   );
 
+  static final isFirstLaunch = PreferencesNotifier.create<bool, bool>("is_first_launch", true);
+
   // Null means that auto selection has not been performed yet.
   static final autoAppsSelectionRegion = PreferencesNotifier.create<Region?, String?>(
     "auto_apps_selection_region",
