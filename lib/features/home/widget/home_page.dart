@@ -4,15 +4,21 @@ import 'package:gap/gap.dart';
 import 'package:hiddify/core/app_info/app_info_provider.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
+import 'package:hiddify/features/ads/data/ad_manager_provider.dart';
 import 'package:hiddify/features/ads/widget/ads_reward_page.dart';
+import 'package:hiddify/features/ads/widget/banner_ad_widget.dart';
+import 'package:hiddify/features/app_update/data/update_checker_service.dart';
 import 'package:hiddify/features/home/widget/connection_button.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
 import 'package:hiddify/features/profile/widget/profile_tile.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
 import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
 import 'package:hiddify/gen/assets.gen.dart';
+import 'package:hiddify/utils/platform_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sliver_tools/sliver_tools.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends HookConsumerWidget {
   const HomePage({super.key});
@@ -23,6 +29,69 @@ class HomePage extends HookConsumerWidget {
     final t = ref.watch(translationsProvider).requireValue;
     // final hasAnyProfile = ref.watch(hasAnyProfileProvider);
     final activeProfile = ref.watch(activeProfileProvider);
+    final adConfig = ref.watch(adManagerProvider).asData?.value;
+    final topBanner = adConfig?.ads.homeBannerTop;
+    final bottomBanner = adConfig?.ads.homeBannerBottom;
+
+    useEffect(() {
+      Future.microtask(() async {
+        final updateService = ref.read(updateCheckerServiceProvider);
+        final update = await updateService.checkUpdate();
+        if (update != null && context.mounted) {
+          final packageInfo = await PackageInfo.fromPlatform();
+          // Remove + part if exists to parse integer or just use buildNumber
+          final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+
+          if (update.latestBuildNumber > currentBuild) {
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: Text(t.dialogs.newVersion.title),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.dialogs.newVersion.msg),
+                        const Gap(8),
+                        Text("${t.dialogs.newVersion.currentVersion} ${packageInfo.version} ($currentBuild)"),
+                        Text("${t.dialogs.newVersion.newVersion} ${update.latestVersionName} (${update.latestBuildNumber})"),
+                        const Gap(8),
+                        Text(t.dialogs.newVersion.releaseNotes, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(update.releaseNotes),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(t.common.later),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        String? link;
+                        if (PlatformUtils.isAndroid) {
+                          link = update.downloadLinks['android'];
+                        } else if (PlatformUtils.isWindows) {
+                          link = update.downloadLinks['windows'];
+                        }
+                        if (link != null) {
+                          launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Text(t.dialogs.newVersion.updateNow),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        }
+      });
+      return null;
+    }, []);
 
     return Scaffold(
       appBar: AppBar(
@@ -112,47 +181,55 @@ class HomePage extends HookConsumerWidget {
                 constraints: const BoxConstraints(
                   maxWidth: 600, // Set the maximum width here
                 ),
-                child: CustomScrollView(
-                  slivers: [
-                    // switch (activeProfile) {
-                    // AsyncData(value: final profile?) =>
-                    MultiSliver(
-                      children: [
-                        // const Gap(100),
-                        switch (activeProfile) {
-                          AsyncData(value: final profile?) => ProfileTile(
-                            profile: profile,
-                            isMain: true,
-                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            color: Theme.of(context).colorScheme.surfaceContainer,
-                          ),
-                          _ => const Text(""),
-                        },
-                        const SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  children: [
+                    if (topBanner != null && topBanner.isEnabled) BannerAdWidget(adItem: topBanner),
+                    Expanded(
+                      child: CustomScrollView(
+                        slivers: [
+                          // switch (activeProfile) {
+                          // AsyncData(value: final profile?) =>
+                          MultiSliver(
                             children: [
-                              Expanded(
+                              // const Gap(100),
+                              switch (activeProfile) {
+                                AsyncData(value: final profile?) => ProfileTile(
+                                  profile: profile,
+                                  isMain: true,
+                                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  color: Theme.of(context).colorScheme.surfaceContainer,
+                                ),
+                                _ => const Text(""),
+                              },
+                              const SliverFillRemaining(
+                                hasScrollBody: false,
                                 child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [ConnectionButton(), ActiveProxyDelayIndicator()],
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [ConnectionButton(), ActiveProxyDelayIndicator()],
+                                      ),
+                                    ),
+                                    ActiveProxyFooter(),
+                                  ],
                                 ),
                               ),
-                              ActiveProxyFooter(),
                             ],
                           ),
-                        ),
-                      ],
+                          // AsyncData() => switch (hasAnyProfile) {
+                          //     AsyncData(value: true) => const EmptyActiveProfileHomeBody(),
+                          //     _ => const EmptyProfilesHomeBody(),
+                          //   },
+                          // AsyncError(:final error) => SliverErrorBodyPlaceholder(t.presentShortError(error)),
+                          // _ => const SliverToBoxAdapter(),
+                          // },
+                        ],
+                      ),
                     ),
-                    // AsyncData() => switch (hasAnyProfile) {
-                    //     AsyncData(value: true) => const EmptyActiveProfileHomeBody(),
-                    //     _ => const EmptyProfilesHomeBody(),
-                    //   },
-                    // AsyncError(:final error) => SliverErrorBodyPlaceholder(t.presentShortError(error)),
-                    // _ => const SliverToBoxAdapter(),
-                    // },
+                    if (bottomBanner != null && bottomBanner.isEnabled) BannerAdWidget(adItem: bottomBanner),
                   ],
                 ),
               ),

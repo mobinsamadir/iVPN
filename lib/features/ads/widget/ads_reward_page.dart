@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:gap/gap.dart';
 import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/features/ads/data/ad_config_provider.dart';
+import 'package:hiddify/features/ads/data/ad_manager_provider.dart';
+import 'package:hiddify/features/config_injection/data/vpn_config_provider.dart';
 import 'package:hiddify/features/profile/data/profile_data_providers.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:toastification/toastification.dart';
@@ -16,26 +17,76 @@ class AdsRewardPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
-    final countdownTimer = useState(5);
+    final adConfig = ref.watch(adManagerProvider).asData?.value;
+    final rewardAd = adConfig?.ads.rewardAd;
+    // Default to 10 seconds if not loaded yet
+    final initialTimer = rewardAd?.timerSeconds ?? 10;
+
+    final countdownTimer = useState(initialTimer);
     final canClaim = useState(false);
+
     final controller = useMemoized(() {
-      return WebViewController()
+      final c = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(const Color(0x00000000))
-        ..loadHtmlString('''
+        ..setBackgroundColor(const Color(0x00000000));
+
+      String content = rewardAd?.mediaSource ?? '';
+
+      if (content.isEmpty) {
+         c.loadHtmlString('''
+<!DOCTYPE html>
+<html>
+<body>
+</body>
+</html>
+''');
+         return c;
+      }
+
+      // Fix protocol-relative URLs
+      if (content.contains("src='//")) {
+         content = content.replaceAll("src='//", "src='https://");
+      }
+      if (content.contains('src="//')) {
+         content = content.replaceAll('src="//', 'src="https://');
+      }
+
+      // If iframe/div, wrap in HTML
+      if (content.trim().startsWith('<iframe') || content.trim().startsWith('<div')) {
+          c.loadHtmlString('''
 <!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background-color: transparent; overflow: hidden; }</style>
 </head>
-<body style="margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background-color: transparent;">
-<div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
-  <iframe data-aa='2426527' src='https://acceptable.a-ads.com/2426527/?size=Adaptive' style='border:0; padding:0; width:70%; height:300px; overflow:hidden;display: block;margin: auto'></iframe>
-</div>
+<body>
+$content
 </body>
 </html>
         ''');
-    });
+      } else {
+         if (content.startsWith('//')) {
+             content = 'https:$content';
+         }
+         // Only load if it looks like a URL
+         if (content.startsWith('http')) {
+             c.loadRequest(Uri.parse(content));
+         } else {
+             // Fallback for empty or invalid content not handled above
+             c.loadHtmlString(content);
+         }
+      }
+      return c;
+    }, [rewardAd?.mediaSource]);
+
+    // Ensure we fetch VPN config if not present
+    useEffect(() {
+        if (ref.read(vpnConfigProvider) == null) {
+            ref.read(vpnConfigServiceProvider).fetchConfig();
+        }
+        return null;
+    }, []);
 
     useEffect(() {
       final t = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -84,7 +135,7 @@ class AdsRewardPage extends HookConsumerWidget {
               child: ElevatedButton(
                 onPressed: canClaim.value
                     ? () async {
-                        final configContent = ref.read(adConfigProvider);
+                        final configContent = ref.read(vpnConfigProvider);
                         if (configContent == null || configContent.isEmpty) {
                           if (context.mounted) {
                             toastification.show(
@@ -95,7 +146,7 @@ class AdsRewardPage extends HookConsumerWidget {
                             );
                           }
                           // Try fetching again
-                          ref.read(adConfigServiceProvider).fetchRemoteConfig();
+                          ref.read(vpnConfigServiceProvider).fetchConfig();
                           return;
                         }
 

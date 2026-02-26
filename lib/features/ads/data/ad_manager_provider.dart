@@ -1,27 +1,24 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:hiddify/core/logger/logger.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hiddify/features/ads/model/ad_config.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-part 'ad_config_provider.g.dart';
-
-// Provider to store the fetched config content
-final adConfigProvider = StateProvider<String?>((ref) => null);
+part 'ad_manager_provider.g.dart';
 
 @Riverpod(keepAlive: true)
-AdConfigService adConfigService(Ref ref) {
-  return AdConfigService(ref);
-}
-
-class AdConfigService {
-  final Ref _ref;
+class AdManager extends _$AdManager {
   final Dio _dio = Dio();
   static const _url =
-      'https://gist.githubusercontent.com/mobinsamadir/687a7ef199d6eaf6d1912e36151a9327/raw/a1e99f7ce01dcc0ee065552cdcc13593de1cd888/servers.txt';
+      'https://gist.githubusercontent.com/mobinsamadir/037cdab8b8713e1c5a52d815539f5638/raw/086833a97d236d9cf57d427c46c2268904244a7e/ad_config.json';
 
-  AdConfigService(this._ref);
+  @override
+  FutureOr<AdConfig?> build() async {
+    return _fetchAdConfig();
+  }
 
-  Future<void> fetchRemoteConfig() async {
+  Future<AdConfig?> _fetchAdConfig() async {
     Logger.bootstrap.debug('Fetching remote ad config...');
     try {
       final response = await _dio.get<String>(
@@ -34,14 +31,16 @@ class AdConfigService {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        _ref.read(adConfigProvider.notifier).state = response.data;
+        final json = jsonDecode(response.data!) as Map<String, dynamic>;
+        final config = AdConfig.fromJson(json);
         Logger.bootstrap.debug('Remote ad config fetched successfully.');
+        return config;
       } else {
         Logger.bootstrap.warning('Failed to fetch remote ad config. Status code: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
       Logger.bootstrap.error('Error fetching remote ad config', e, stackTrace);
-      // We do not rethrow, to avoid blocking app startup
     }
+    return null;
   }
 }
