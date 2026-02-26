@@ -64,6 +64,10 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
     return RoutingConfig(
       redirect: (context, state) {
         final introCompleted = ref.read(Preferences.introCompleted);
+        // We read isFirstLaunch for debugging/logging, but the logic depends on introCompleted
+        // ignore: unused_local_variable
+        final isFirstLaunch = ref.read(Preferences.isFirstLaunch);
+
         final isIntro = state.matchedLocation == '/intro';
         // fix path-parameters for deep link
         String? url;
@@ -76,13 +80,15 @@ class RoutingConfigNotifier extends _$RoutingConfigNotifier {
           url = state.uri.queryParameters['url'];
         }
 
+        // Logic restored: if intro not completed, go to intro.
         if (!introCompleted) {
           return url != null ? '/intro?url=$url' : '/intro';
         } else if (isIntro) {
-          if (url != null)
+          if (url != null) {
             WidgetsBinding.instance.addPostFrameCallback(
               (_) => ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile(url: url),
             );
+          }
           return '/home';
         } else if (url != null) {
           WidgetsBinding.instance.addPostFrameCallback(
