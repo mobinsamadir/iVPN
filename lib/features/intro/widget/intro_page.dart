@@ -221,15 +221,15 @@ class IntroPage extends HookConsumerWidget with PresLogger {
       case "IR":
         return RegionLocale(Region.ir, AppLocale.fa);
       case "CN":
-        return RegionLocale(Region.cn, AppLocale.zhCn);
+        return RegionLocale(Region.cn, AppLocale.en);
       case "RU":
-        return RegionLocale(Region.ru, AppLocale.ru);
+        return RegionLocale(Region.ru, AppLocale.en);
       case "AF":
         return RegionLocale(Region.af, AppLocale.fa);
       case "BR":
-        return RegionLocale(Region.other, AppLocale.ptBr);
+        return RegionLocale(Region.other, AppLocale.en);
       case "TR":
-        return RegionLocale(Region.other, AppLocale.tr);
+        return RegionLocale(Region.other, AppLocale.en);
       default:
         return RegionLocale(Region.other, AppLocale.en);
     }
