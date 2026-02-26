@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:hiddify/core/logger/logger.dart';
 import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/features/config_injection/data/vpn_config_provider.dart';
@@ -18,21 +20,38 @@ class InitialConfigService {
 
   InitialConfigService(this._ref);
 
+  void _log(String message) {
+    Logger.bootstrap.info(message);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[InitialConfigService] $message');
+    }
+  }
+
+  void _logError(String message, [Object? error, StackTrace? stackTrace]) {
+    Logger.bootstrap.error(message, error, stackTrace);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[InitialConfigService] ERROR: $message\n$error\n$stackTrace');
+    }
+  }
+
   Future<void> injectInitialConfig() async {
     final isFirstLaunch = _ref.read(Preferences.isFirstLaunch);
-    Logger.bootstrap.info('Checking for first launch configs... (isFirstLaunch: $isFirstLaunch)');
+    _log('Checking for first launch configs... (isFirstLaunch: $isFirstLaunch)');
 
     if (!isFirstLaunch) {
       Logger.bootstrap.debug('Not first launch, skipping initial config injection.');
       return;
     }
 
-    Logger.bootstrap.info('First launch detected, attempting to inject initial config...');
+    _log('First launch detected, attempting to inject initial config...');
 
     try {
+      _log('Attempting to fetch initial config content...');
       final configContent = await _ref.read(vpnConfigServiceProvider).fetchConfig();
 
       if (configContent != null && configContent.isNotEmpty) {
+        _log('Config content fetched (length: ${configContent.length}). Injecting...');
+
         final profileRepo = _ref.read(profileRepositoryProvider).requireValue;
 
         // Inject the config
@@ -43,19 +62,19 @@ class InitialConfigService {
 
         result.match(
           (err) {
-             Logger.bootstrap.error('Failed to inject initial config: $err');
+             _logError('Failed to inject initial config: $err');
           },
           (_) async {
-            Logger.bootstrap.info('Initial config injected successfully.');
+            _log('Initial config injected successfully.');
             // Set isFirstLaunch to false
              await _ref.read(Preferences.isFirstLaunch.notifier).update(false);
           },
         );
       } else {
-        Logger.bootstrap.warning('Failed to fetch initial config.');
+        _log('Failed to fetch initial config (content is null or empty).');
       }
     } catch (e, stackTrace) {
-      Logger.bootstrap.error('Error injecting initial config', e, stackTrace);
+      _logError('Error injecting initial config', e, stackTrace);
       // We do not rethrow, to avoid blocking app startup
     }
   }

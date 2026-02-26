@@ -287,6 +287,10 @@ android-aab-release:
 windows-release: windows-zip-release #windows-exe-release windows-msix-release
 
 windows-zip-release:
+	flutter build windows --release --dart-define sentry_dsn=$(SENTRY_DSN) --dart-define portable=true
+	@$(BLUE)Stripping debug symbols from Windows binaries...$(DONE)
+	strip build/windows/runner/Release/*.exe || echo "strip failed or not found, skipping"
+	strip build/windows/runner/Release/*.dll || echo "strip failed or not found, skipping"
 	fastforge package \
 	  --platform windows \
 	  --targets zip \

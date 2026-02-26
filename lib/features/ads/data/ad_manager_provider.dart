@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:dio/dio.dart';
 import 'package:hiddify/core/logger/logger.dart';
@@ -19,6 +21,20 @@ class AdManager extends _$AdManager {
   static const _cacheKey = 'ad_config_cache';
   static const _timestampKey = 'ad_config_last_fetch_timestamp';
 
+  void _log(String message) {
+    Logger.app.info(message);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[AdManager] $message');
+    }
+  }
+
+  void _logError(String message, [Object? error, StackTrace? stackTrace]) {
+    Logger.app.error(message, error, stackTrace);
+    if (!kIsWeb && Platform.isWindows) {
+      stdout.writeln('[AdManager] ERROR: $message\n$error\n$stackTrace');
+    }
+  }
+
   @override
   FutureOr<AdConfig?> build() async {
     // Load SharedPreferences via ref
@@ -32,9 +48,9 @@ class AdManager extends _$AdManager {
         final fixedCached = _fixUrls(cached);
         final json = jsonDecode(fixedCached) as Map<String, dynamic>;
         cachedConfig = AdConfig.fromJson(json);
-        Logger.app.info('Loaded ad config from cache.');
+        _log('Loaded ad config from cache.');
       } catch (e) {
-        Logger.app.warning('Failed to parse cached ad config: $e');
+        _logError('Failed to parse cached ad config', e);
       }
     }
 
@@ -45,15 +61,15 @@ class AdManager extends _$AdManager {
     final shouldFetch = diff > const Duration(hours: 6).inMilliseconds;
 
     if (shouldFetch) {
-        Logger.app.info('Ad config cache expired (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}), fetching remote...');
+        _log('Ad config cache expired (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}), fetching remote...');
        _fetchAndCache(prefs);
     } else {
-        Logger.app.debug('Ad config cache valid (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}). Skipping remote fetch.');
+        _log('Ad config cache valid (last fetch: ${DateTime.fromMillisecondsSinceEpoch(lastFetch)}). Skipping remote fetch.');
     }
 
     // If no cache exists, force fetch even if timestamp says otherwise (edge case)
     if (cachedConfig == null && !shouldFetch) {
-        Logger.app.info('No cached ad config found, fetching remote...');
+        _log('No cached ad config found, fetching remote...');
         _fetchAndCache(prefs);
     }
 
@@ -61,7 +77,7 @@ class AdManager extends _$AdManager {
   }
 
   Future<void> _fetchAndCache(SharedPreferences prefs) async {
-    Logger.app.info('Attempting to fetch Ad JSON...');
+    _log('Attempting to fetch Ad JSON from $_url');
     try {
       final response = await _dio.get<String>(
         _url,
@@ -72,26 +88,35 @@ class AdManager extends _$AdManager {
         ),
       );
 
+      _log('Network Response received: ${response.statusCode}');
+
       if (response.statusCode == 200 && response.data != null) {
         final rawData = response.data!;
+        _log('Raw data received (length: ${rawData.length})');
+
         final fixedData = _fixUrls(rawData);
 
-        Logger.app.info('Ad JSON fetched successfully.');
+        _log('Ad JSON fetched successfully.');
 
         // Update cache
         await prefs.setString(_cacheKey, fixedData);
         await prefs.setInt(_timestampKey, DateTime.now().millisecondsSinceEpoch);
 
         // Parse and update state
-        final json = jsonDecode(fixedData) as Map<String, dynamic>;
-        final newConfig = AdConfig.fromJson(json);
+        try {
+          final json = jsonDecode(fixedData) as Map<String, dynamic>;
+          _log('JSON parsing result: Success');
+          final newConfig = AdConfig.fromJson(json);
+          state = AsyncData(newConfig);
+        } catch (e) {
+           _logError('JSON parsing result: Failure', e);
+        }
 
-        state = AsyncData(newConfig);
       } else {
-        Logger.app.warning('Failed to fetch remote ad config. Status code: ${response.statusCode}');
+        _logError('Failed to fetch remote ad config. Status code: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      Logger.app.error('Error fetching remote ad config', e, stackTrace);
+      _logError('Error fetching remote ad config', e, stackTrace);
     }
   }
 
