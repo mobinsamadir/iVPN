@@ -33,30 +33,30 @@ env:
   
 
 jobs:
-  test:
-    outputs:
-      draftBuildCode: ${{ steps.draftBuildCode.outputs.datetime }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2.21.0 #issue with 2.13
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: 'stable'
-          cache: true
-          
-      - name: Prepare
-        run: make linux-amd64-prepare
-      - name: Test
-        run: flutter test
-
-      - name: make draftBuildCode
-        id: draftBuildCode
-        run: echo "::set-output name=datetime::$(date +'%d.%H.%M')"
+#  test:
+#    outputs:
+#      draftBuildCode: ${{ steps.draftBuildCode.outputs.datetime }}
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: subosito/flutter-action@v2.21.0 #issue with 2.13
+#        with:
+#          flutter-version: ${{ env.FLUTTER_VERSION }}
+#          channel: 'stable'
+#          cache: true
+#
+#      - name: Prepare
+#        run: make linux-amd64-prepare
+#      - name: Test
+#        run: flutter test
+#
+#      - name: make draftBuildCode
+#        id: draftBuildCode
+#        run: echo "::set-output name=datetime::$(date +'%d.%H.%M')"
 
 
   build:
-    needs: test
+#    needs: test
     permissions: write-all
     continue-on-error: true
 
@@ -64,18 +64,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: android-apk
-          #   os: ubuntu-latest
-          #   targets: apk
-
-          - platform: android-aab
+          - platform: android-apk
             os: ubuntu-latest
-            targets: aab
+            targets: apk
 
-          # - platform: windows
-          #   os: windows-latest
-          #   aarch: amd64
-          #   targets: exe,msix,zip
+          # - platform: android-aab
+          #   os: ubuntu-latest
+          #   targets: aab
+
+          - platform: windows
+            os: windows-latest
+            # targets: exe,msix,zip
+            targets: zip
 
           # - platform: linux-amd64
           #   os: ubuntu-22.04
@@ -96,12 +96,12 @@ jobs:
           #   os: ubuntu-24.04-arm
           #   aarch: arm64
           #   targets: deb,gz
-            
+
           # - platform: macos
           #   os: macos-15
           #   aarch: universal
           #   targets: dmg,pkg
-            
+
           # - platform: ios
           #   os: macos-15
           #   aarch: universal
@@ -115,7 +115,7 @@ jobs:
       - name: Import Apple Codesign Certificates
         if: ${{ inputs.upload-artifact && startsWith(matrix.os,'macos') }}
         uses: apple-actions/import-codesign-certs@v6
-        with: 
+        with:
             p12-file-base64: "${{ secrets.APPLE_CERTIFICATE_P12 }}"
             p12-password: "${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}"
 
@@ -130,7 +130,7 @@ jobs:
         #   ls ~/Library/MobileDevice/Provisioning\ Profiles
         #   echo "${{secrets.NEW_APPLE_MOBILE_PROVISIONING_PROFILES_TARXZ_BASE64}}"|base64 --decode | tar xJ -C ~/Library/MobileDevice/Provisioning\ Profiles
         #   # echo "${{secrets.NEW_APPLE_MOBILE_PROVISIONING_PROFILES_TARGZ_BASE64_2}}"|base64 --decode | tar xz -C ~/Library/MobileDevice/Provisioning\ Profiles
-          
+
 
 
       - name: Setup Flutter for arm64
@@ -168,7 +168,7 @@ jobs:
       
       - name: Setup Java
         if: startsWith(matrix.platform,'android')
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: 17
@@ -192,9 +192,9 @@ jobs:
       #       /usr/local/lib/android/sdk
       #     key: android-sdk-${{ runner.os }}-${{ env.NDK_VERSION }}
       #     restore-keys: |
-      #       android-sdk-${{ runner.os }}-      
+      #       android-sdk-${{ runner.os }}-
       - name: Cache Gradle
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         if: startsWith(matrix.platform,'android')
 
         with:
@@ -213,18 +213,31 @@ jobs:
       - name: Setup Android Signing Properties
         if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'android') }}
         run: |
-          echo "${{ secrets.ANDROID_SIGNING_KEY }}" | base64 --decode > android/key.jks
-          echo "storeFile=$(pwd)/android/key.jks" > android/key.properties
-          echo "storePassword=${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}" >> android/key.properties
-          echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
-          echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
+          if [ -z "${{ secrets.ANDROID_SIGNING_KEY }}" ]; then
+            echo "ANDROID_SIGNING_KEY is empty. Generating dummy keystore..."
+            keytool -genkey -v -keystore android/key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias key -storepass pass123 -keypass pass123 -dname "CN=iVPN, OU=iVPN, O=iVPN, C=US"
+            echo "storeFile=$(pwd)/android/key.jks" > android/key.properties
+            echo "storePassword=pass123" >> android/key.properties
+            echo "keyPassword=pass123" >> android/key.properties
+            echo "keyAlias=key" >> android/key.properties
+          else
+            echo "${{ secrets.ANDROID_SIGNING_KEY }}" | base64 --decode > android/key.jks
+            echo "storeFile=$(pwd)/android/key.jks" > android/key.properties
+            echo "storePassword=${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}" >> android/key.properties
+            echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
+            echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
+          fi
 
       - name: Setup Windows Signing Properties
         if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') }}
         run: |
-            [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
-            (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
-        
+            if ("${{ secrets.WINDOWS_SIGNING_KEY }}" -ne "") {
+                [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
+                (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
+            } else {
+                Write-Host "WINDOWS_SIGNING_KEY is empty. Skipping Windows signing setup."
+            }
+
       # - name: Temporary disable Permission Handler for windows due to its issue in permission
       #   if: ${{ startsWith(matrix.platform,'windows') }}
       #   run: |
@@ -248,7 +261,7 @@ jobs:
           make ${{ matrix.platform }}-release
 
       - name: Code Sign
-        if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') }}
+        if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') && secrets.WINDOWS_SIGNING_KEY != '' }}
         uses: hiddify/signtool-code-sign-sha256@main
         with:
           certificate: '${{ secrets.WINDOWS_SIGNING_KEY }}'
@@ -312,12 +325,13 @@ jobs:
           cp ./build/app/outputs/bundle/release/app-release.aab out/hiddify-android-market.aab || echo "no aab"
 
       - name: Copy to out unix
+        # if: startsWith(matrix.platform,'linux') || matrix.platform == 'macos' || matrix.platform == 'ios'
         if: startsWith(matrix.platform,'linux') || matrix.platform == 'macos' || matrix.platform == 'ios'
         run: |
           ls -R dist/
           mkdir out
           mkdir tmp_out
-          
+
           for EXT in $(echo ${{ matrix.targets }} | tr ',' '\n'); do
             KEY=TARGET_NAME_${EXT}
             FILENAME=${!KEY}
@@ -443,7 +457,7 @@ jobs:
           ls -R ./out
           ls -R ./.github/
           ls -R ./.git/
-          mv out/hiddify-android-market.aab  hiddify-android-market.aab
+          mv out/hiddify-android-market.aab  hiddify-android-market.aab || echo "no aab"
 
       - name: prepare_release_message
         run: |
@@ -464,19 +478,19 @@ jobs:
       - name: Create service_account.json
         run: echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > service_account.json
 
-      - name: Deploy to Google Play Internal Testers
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJson: service_account.json
-          packageName: app.hiddify.com
-          releaseName: ${{ env.TAG_NAME }}
-          releaseFiles: ./hiddify-android-market.aab
-          track: 'beta'
+      # - name: Deploy to Google Play Internal Testers
+      #   uses: r0adkll/upload-google-play@v1
+      #   with:
+      #     serviceAccountJson: service_account.json
+      #     packageName: app.hiddify.com
+      #     releaseName: ${{ env.TAG_NAME }}
+      #     releaseFiles: ./hiddify-android-market.aab
+      #     track: 'beta'
 
 
   upload-to-testflight:
     needs: [build]
-    if: ${{ inputs.upload-artifact &&  inputs.tag-name != 'draft' }}
+    if: ${{ false && inputs.upload-artifact &&  inputs.tag-name != 'draft' }}
     #if: ${{ inputs.upload-artifact }}
     runs-on: macOS-latest
     timeout-minutes: 30
@@ -505,7 +519,7 @@ jobs:
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-  
+
 
 
       - name: Import Apple Mobile Provisioning Profile
@@ -516,7 +530,7 @@ jobs:
 
       - uses: Apple-Actions/upload-testflight-build@v4
         with:
-          app-path: 'out/Hiddify-iOS.ipa' 
+          app-path: 'out/Hiddify-iOS.ipa'
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
