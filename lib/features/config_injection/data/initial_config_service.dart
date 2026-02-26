@@ -20,6 +20,7 @@ class InitialConfigService {
 
   Future<void> injectInitialConfig() async {
     final isFirstLaunch = _ref.read(Preferences.isFirstLaunch);
+    Logger.bootstrap.info('Checking for first launch configs... (isFirstLaunch: $isFirstLaunch)');
 
     if (!isFirstLaunch) {
       Logger.bootstrap.debug('Not first launch, skipping initial config injection.');
