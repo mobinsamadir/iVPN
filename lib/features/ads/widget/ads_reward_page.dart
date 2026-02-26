@@ -28,43 +28,40 @@ class AdsRewardPage extends HookConsumerWidget {
       String content = rewardAd?.mediaSource ?? '';
 
       if (content.isEmpty) {
-         c.loadHtmlString('<html><body></body></html>');
-         return c;
+        c.loadHtmlString('<html><body></body></html>');
+        return c;
       }
 
       // Fix protocol-relative URLs
       if (content.contains("src='//")) {
-         content = content.replaceAll("src='//", "src='https://");
+        content = content.replaceAll("src='//", "src='https://");
       }
       if (content.contains('src="//')) {
-         content = content.replaceAll('src="//', 'src="https://');
+        content = content.replaceAll('src="//', 'src="https://');
       }
 
-      // If iframe/div, wrap in HTML
-      if (content.trim().startsWith('<iframe') || content.trim().startsWith('<div')) {
-          c.loadHtmlString('''
+      // Check if content is a URL or HTML fragment
+      final bool isUrl = content.startsWith('http') || (content.startsWith('//') && !content.contains('<'));
+
+      if (isUrl) {
+        if (content.startsWith('//')) {
+          content = 'https:$content';
+        }
+        c.loadRequest(Uri.parse(content));
+      } else {
+        // Wrap HTML content in boilerplate
+        final fullHtml = '''
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; background-color: transparent; overflow: hidden; }</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body>
-$content
+<body style="margin:0; padding:0; background-color:transparent; display:flex; justify-content:center; align-items:center; height: 100vh; overflow: hidden;">
+  $content
 </body>
 </html>
-        ''');
-      } else {
-         if (content.startsWith('//')) {
-             content = 'https:$content';
-         }
-         // Only load if it looks like a URL
-         if (content.startsWith('http')) {
-             c.loadRequest(Uri.parse(content));
-         } else {
-             // Fallback for empty or invalid content not handled above
-             c.loadHtmlString(content);
-         }
+''';
+        c.loadHtmlString(fullHtml);
       }
       return c;
     }, [rewardAd?.mediaSource]);
@@ -95,35 +92,37 @@ $content
           onPressed: () => Navigator.of(context).pop(false),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: WebViewWidget(controller: controller),
-            ),
-            const Gap(16),
-            const Text(
-              "Please wait to connect...",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const Gap(8),
-            if (!canClaim.value)
-              Text(
-                "${countdownTimer.value} seconds",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: WebViewWidget(controller: controller),
               ),
-            const Gap(16),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text("Cancel"),
+              const Gap(16),
+              const Text(
+                "Please wait to connect...",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-            ),
-            const Gap(32),
-          ],
+              const Gap(8),
+              if (!canClaim.value)
+                Text(
+                  "${countdownTimer.value} seconds",
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              const Gap(16),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text("Cancel"),
+                ),
+              ),
+              const Gap(32),
+            ],
+          ),
         ),
       ),
     );
