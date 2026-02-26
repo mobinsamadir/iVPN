@@ -9,6 +9,7 @@ import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
 import 'package:hiddify/core/router/dialog/widgets/custom_alert_dialog.dart';
 import 'package:hiddify/core/theme/theme_extensions.dart';
 import 'package:hiddify/core/widget/animated_text.dart';
+import 'package:hiddify/features/ads/widget/ads_reward_page.dart';
 import 'package:hiddify/features/connection/model/connection_status.dart';
 import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
 import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
@@ -127,7 +128,15 @@ class ConnectionButton extends HookConsumerWidget {
             ref.read(bottomSheetsNotifierProvider.notifier).showAddProfile();
           }
           if (await ref.read(dialogNotifierProvider.notifier).showExperimentalFeatureNotice()) {
-            return await ref.read(connectionNotifierProvider.notifier).toggleConnection();
+            if (context.mounted) {
+              final result = await Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const AdsRewardPage()));
+              if (result == true) {
+                return await ref
+                    .read(connectionNotifierProvider.notifier)
+                    .toggleConnection();
+              }
+            }
           }
         },
         AsyncData(value: Connected()) => () async {

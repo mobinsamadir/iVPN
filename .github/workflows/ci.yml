@@ -1,11 +1,6 @@
 name: CI
 on:
-  pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.vscode/'
-      - 'appcast.xml'
+  workflow_dispatch:
   push:
     branches:
        - main
