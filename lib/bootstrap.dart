@@ -109,12 +109,6 @@ Future<void> lazyBootstrap(WidgetsBinding widgetsBinding, Environment env) async
     } catch (e) {
       log('CRITICAL: Initial config injection crashed: $e');
     }
-  } else {
-     await _safeInit(
-      "initial config",
-      () => container.read(initialConfigServiceProvider).injectInitialConfig(),
-      timeout: 2000,
-    );
   }
 
   await _safeInit("remote ad config", () => container.read(adManagerProvider.future));
